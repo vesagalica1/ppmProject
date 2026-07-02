@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "GymLog",
+    "slug": "gymlog",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gymlog.app"
+    },
+    "android": {
+      "package": "com.gymlog.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#1A1D23",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FF6B35"
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font"
+    ]
+  }
+}
