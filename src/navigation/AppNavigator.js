@@ -37,7 +37,7 @@ function HomeStackNavigator() {
       <HomeStack.Screen
         name="AddEditWorkout"
         component={AddEditWorkoutScreen}
-        options={{ title: 'Edit Workout' }}
+        options={({ route }) => ({ title: route.params?.workout ? 'Edit Workout' : 'Add Workout' })}
       />
       <HomeStack.Screen
         name="WeightTracker"

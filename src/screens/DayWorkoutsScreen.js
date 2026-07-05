@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import WorkoutCard from '../components/WorkoutCard';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToWorkouts } from '../services/workouts';
-import { colors, spacing, typography } from '../theme/colors';
+import { colors, radius, spacing, typography } from '../theme/colors';
 
 function toDate(value) {
   return value?.toDate ? value.toDate() : new Date(value);
@@ -53,6 +53,13 @@ export default function DayWorkoutsScreen({ navigation, route }) {
           />
         )}
       />
+
+      <Pressable
+        style={styles.fab}
+        onPress={() => navigation.navigate('AddEditWorkout', { presetDate: dateKey })}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </Pressable>
     </ScreenContainer>
   );
 }
@@ -76,5 +83,26 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: 0,
     paddingBottom: spacing.xl * 2,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  fabText: {
+    fontSize: 30,
+    color: colors.primary,
+    marginTop: -2,
   },
 });

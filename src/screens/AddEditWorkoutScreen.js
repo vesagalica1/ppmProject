@@ -20,21 +20,25 @@ import { addWorkout, updateWorkout } from '../services/workouts';
 import { colors, radius, spacing, typography } from '../theme/colors';
 import { parseDecimal } from '../utils/number';
 
-const emptyForm = {
-  exerciseName: '',
-  sets: '',
-  reps: '',
-  weight: '',
-  notes: '',
-  date: new Date(),
-};
+function createEmptyForm(presetDate) {
+  return {
+    exerciseName: '',
+    sets: '',
+    reps: '',
+    weight: '',
+    notes: '',
+    date: presetDate ? new Date(presetDate) : new Date(),
+  };
+}
 
 export default function AddEditWorkoutScreen({ navigation, route }) {
   const { user } = useAuth();
   const editingWorkout = route.params?.workout;
+  const presetDate = route.params?.presetDate;
   const isEditing = Boolean(editingWorkout);
+  const isDateLocked = !isEditing && Boolean(presetDate);
 
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => createEmptyForm(presetDate));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -49,16 +53,16 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
         date: editingWorkout.date?.toDate ? editingWorkout.date.toDate() : new Date(editingWorkout.date),
       });
     } else {
-      setForm(emptyForm);
+      setForm(createEmptyForm(presetDate));
     }
-  }, [editingWorkout?.id]);
+  }, [editingWorkout?.id, presetDate]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
-      if (!isEditing) setForm(emptyForm);
+      if (!isEditing) setForm(createEmptyForm(presetDate));
     });
     return unsubscribe;
-  }, [navigation, isEditing]);
+  }, [navigation, isEditing, presetDate]);
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -95,11 +99,14 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
       } else {
         await addWorkout(user.uid, payload);
       }
-      setForm(emptyForm);
+      setForm(createEmptyForm(presetDate));
       if (isEditing) {
         // Pop back to the Home list (instead of the now-stale detail screen)
         // so the edited values are shown fresh from the live Firestore query.
         navigation.navigate('Home');
+      } else if (presetDate) {
+        // Return to the Day view we came from; it's live-subscribed so the new entry shows up right away.
+        navigation.goBack();
       } else {
         navigation.navigate('HomeTab', { screen: 'Home' });
       }
@@ -165,7 +172,8 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
 
           <Text style={styles.label}>Date</Text>
           <Pressable
-            style={styles.dateButton}
+            style={[styles.dateButton, isDateLocked && styles.dateButtonDisabled]}
+            disabled={isDateLocked}
             onPress={() => {
               Keyboard.dismiss();
               setShowDatePicker(true);
@@ -173,7 +181,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
           >
             <Text style={styles.dateButtonText}>{form.date.toDateString()}</Text>
           </Pressable>
-          {showDatePicker ? (
+          {showDatePicker && !isDateLocked ? (
             <DateTimePicker
               value={form.date}
               mode="date"
@@ -248,6 +256,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: spacing.md,
+  },
+  dateButtonDisabled: {
+    opacity: 0.6,
   },
   dateButtonText: {
     ...typography.body,
