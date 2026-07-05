@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AddEditWorkoutScreen from '../screens/AddEditWorkoutScreen';
+import DayWorkoutsScreen from '../screens/DayWorkoutsScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import WorkoutDetailScreen from '../screens/WorkoutDetailScreen';
@@ -22,6 +23,11 @@ function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={stackScreenOptions}>
       <HomeStack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+      <HomeStack.Screen
+        name="DayWorkouts"
+        component={DayWorkoutsScreen}
+        options={{ title: 'Workouts' }}
+      />
       <HomeStack.Screen
         name="WorkoutDetail"
         component={WorkoutDetailScreen}

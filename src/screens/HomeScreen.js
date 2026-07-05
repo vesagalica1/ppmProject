@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import DayGroupCard from '../components/DayGroupCard';
 import ScreenContainer from '../components/ScreenContainer';
-import WorkoutCard from '../components/WorkoutCard';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToWorkouts } from '../services/workouts';
 import { colors, radius, spacing, typography } from '../theme/colors';
@@ -42,6 +42,7 @@ export default function HomeScreen({ navigation }) {
   }, [user]);
 
   const { weeklyCount, streak } = useMemo(() => computeStats(workouts), [workouts]);
+  const dayGroups = useMemo(() => groupByDay(workouts), [workouts]);
 
   return (
     <ScreenContainer>
@@ -59,13 +60,13 @@ export default function HomeScreen({ navigation }) {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <FlatList
-        data={workouts}
-        keyExtractor={(item) => item.id}
+        data={dayGroups}
+        keyExtractor={(item) => item.dateKey}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
-          <WorkoutCard
-            workout={item}
-            onPress={() => navigation.navigate('WorkoutDetail', { workout: item })}
+          <DayGroupCard
+            group={item}
+            onPress={() => navigation.navigate('DayWorkouts', { dateKey: item.dateKey })}
           />
         )}
         ListEmptyComponent={
@@ -97,6 +98,19 @@ function StatCard({ label, value }) {
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
+}
+
+function groupByDay(workouts) {
+  const groups = new Map();
+  for (const workout of workouts) {
+    const date = toDate(workout.date);
+    const dateKey = date.toDateString();
+    if (!groups.has(dateKey)) {
+      groups.set(dateKey, { dateKey, date, workouts: [] });
+    }
+    groups.get(dateKey).workouts.push(workout);
+  }
+  return Array.from(groups.values());
 }
 
 function computeStats(workouts) {
