@@ -1,6 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import KeyboardDoneBar, { KEYBOARD_DONE_BAR_ID } from '../components/KeyboardDoneBar';
 import PrimaryButton from '../components/PrimaryButton';
 import ScreenContainer from '../components/ScreenContainer';
@@ -26,6 +28,7 @@ export default function WeightTrackerScreen() {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -50,6 +53,11 @@ export default function WeightTrackerScreen() {
       return;
     }
 
+    if (editingEntry) {
+      saveWeight(value);
+      return;
+    }
+
     const existing = entries.find((e) => toDate(e.date).toDateString() === date.toDateString());
     if (existing) {
       Alert.alert(
@@ -71,11 +79,25 @@ export default function WeightTrackerScreen() {
     try {
       await logWeightEntry(user.uid, { weight: value, date });
       setWeight('');
+      setEditingEntry(null);
     } catch (error) {
       Alert.alert('Could not save weight', error.message);
     } finally {
       setSaving(false);
     }
+  }
+
+  function startEdit(entry) {
+    setEditingEntry(entry);
+    setWeight(String(entry.weight));
+    setDate(toDate(entry.date));
+    setShowDatePicker(false);
+  }
+
+  function cancelEdit() {
+    setEditingEntry(null);
+    setWeight('');
+    setDate(new Date());
   }
 
   function confirmDelete(entry) {
@@ -119,6 +141,17 @@ export default function WeightTrackerScreen() {
               <WeightChart entries={chartEntries} height={140} />
             </View>
 
+            {editingEntry ? (
+              <View style={styles.editBanner}>
+                <Text style={styles.editBannerText}>
+                  Editing {toDate(editingEntry.date).toDateString()}
+                </Text>
+                <Pressable onPress={cancelEdit} hitSlop={8}>
+                  <Text style={styles.editBannerCancel}>Cancel</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
             <TextField
               label="Weight (kg)"
               placeholder="75.5"
@@ -130,7 +163,8 @@ export default function WeightTrackerScreen() {
 
             <Text style={styles.label}>Date</Text>
             <Pressable
-              style={styles.dateButton}
+              style={[styles.dateButton, editingEntry && styles.dateButtonDisabled]}
+              disabled={Boolean(editingEntry)}
               onPress={() => {
                 Keyboard.dismiss();
                 setShowDatePicker(true);
@@ -138,7 +172,7 @@ export default function WeightTrackerScreen() {
             >
               <Text style={styles.dateButtonText}>{date.toDateString()}</Text>
             </Pressable>
-            {showDatePicker ? (
+            {showDatePicker && !editingEntry ? (
               <DateTimePicker
                 value={date}
                 mode="date"
@@ -154,7 +188,7 @@ export default function WeightTrackerScreen() {
             ) : null}
 
             <PrimaryButton
-              title="Save Weight"
+              title={editingEntry ? 'Update Weight' : 'Save Weight'}
               onPress={handleSave}
               loading={saving}
               style={styles.saveButton}
@@ -163,25 +197,38 @@ export default function WeightTrackerScreen() {
             {sortedDescending.length > 0 ? (
               <>
                 <Text style={styles.historyTitle}>History</Text>
-                <Text style={styles.historyHint}>Tap an entry to delete it.</Text>
+                <Text style={styles.historyHint}>Swipe left to delete, tap the pencil to edit.</Text>
               </>
             ) : null}
           </View>
         }
         renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [styles.entryRow, pressed && styles.pressed]}
-            onPress={() => confirmDelete(item)}
-          >
-            <Text style={styles.entryDate}>
-              {toDate(item.date).toLocaleDateString(undefined, {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-              })}
-            </Text>
-            <Text style={styles.entryWeight}>{item.weight} kg</Text>
-          </Pressable>
+          <View style={styles.entryWrapper}>
+            <Swipeable
+              renderRightActions={() => (
+                <Pressable style={styles.deleteAction} onPress={() => confirmDelete(item)}>
+                  <Ionicons name="trash" size={20} color="#FFFFFF" />
+                </Pressable>
+              )}
+              overshootRight={false}
+            >
+              <View style={styles.entryRow}>
+                <Text style={styles.entryDate}>
+                  {toDate(item.date).toLocaleDateString(undefined, {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </Text>
+                <View style={styles.entryRight}>
+                  <Text style={styles.entryWeight}>{item.weight} kg</Text>
+                  <Pressable onPress={() => startEdit(item)} hitSlop={8}>
+                    <Ionicons name="pencil" size={18} color={colors.textOnCardMuted} />
+                  </Pressable>
+                </View>
+              </View>
+            </Swipeable>
+          </View>
         )}
         ListEmptyComponent={
           <Text style={styles.emptyBody}>No entries yet — log your weight above.</Text>
@@ -249,9 +296,31 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: spacing.md,
   },
+  dateButtonDisabled: {
+    opacity: 0.6,
+  },
   dateButtonText: {
     ...typography.body,
     color: colors.textOnCard,
+  },
+  editBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  editBannerText: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  editBannerCancel: {
+    ...typography.caption,
+    color: colors.accent,
+    fontWeight: '700',
   },
   saveButton: {
     marginTop: spacing.sm,
@@ -266,6 +335,9 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: spacing.sm,
   },
+  entryWrapper: {
+    marginBottom: spacing.sm,
+  },
   entryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -274,10 +346,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
-    marginBottom: spacing.sm,
   },
-  pressed: {
-    opacity: 0.8,
+  entryRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  deleteAction: {
+    width: 72,
+    backgroundColor: colors.danger,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   entryDate: {
     ...typography.body,
