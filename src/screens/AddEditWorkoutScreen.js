@@ -162,6 +162,8 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
               value={form.date}
               mode="date"
               display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              themeVariant="dark"
+              accentColor={colors.accent}
               onChange={(event, selectedDate) => {
                 setShowDatePicker(Platform.OS === 'ios');
                 if (selectedDate) update('date', selectedDate);

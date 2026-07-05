@@ -152,6 +152,8 @@ export default function ProfileScreen() {
               mode="time"
               is24Hour
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              themeVariant="dark"
+              accentColor={colors.accent}
               onChange={handleTimeChange}
             />
           ) : null}
