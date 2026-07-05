@@ -1,6 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import KeyboardDoneBar, { KEYBOARD_DONE_BAR_ID } from '../components/KeyboardDoneBar';
 import PrimaryButton from '../components/PrimaryButton';
 import ScreenContainer from '../components/ScreenContainer';
 import TextField from '../components/TextField';
@@ -94,6 +95,8 @@ export default function WeightTrackerScreen() {
         data={sortedDescending}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
         ListHeaderComponent={
           <View>
             <Text style={styles.title}>Weight Tracker</Text>
@@ -122,10 +125,17 @@ export default function WeightTrackerScreen() {
               value={weight}
               onChangeText={setWeight}
               keyboardType="decimal-pad"
+              inputAccessoryViewID={KEYBOARD_DONE_BAR_ID}
             />
 
             <Text style={styles.label}>Date</Text>
-            <Pressable style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+            <Pressable
+              style={styles.dateButton}
+              onPress={() => {
+                Keyboard.dismiss();
+                setShowDatePicker(true);
+              }}
+            >
               <Text style={styles.dateButtonText}>{date.toDateString()}</Text>
             </Pressable>
             {showDatePicker ? (
@@ -177,6 +187,7 @@ export default function WeightTrackerScreen() {
           <Text style={styles.emptyBody}>No entries yet — log your weight above.</Text>
         }
       />
+      <KeyboardDoneBar />
     </ScreenContainer>
   );
 }

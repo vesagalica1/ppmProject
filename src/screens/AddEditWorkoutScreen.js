@@ -2,6 +2,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import KeyboardDoneBar, { KEYBOARD_DONE_BAR_ID } from '../components/KeyboardDoneBar';
 import PrimaryButton from '../components/PrimaryButton';
 import ScreenContainer from '../components/ScreenContainer';
 import TextField from '../components/TextField';
@@ -114,7 +116,11 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
+        >
           <Text style={styles.title}>{isEditing ? 'Edit Workout' : 'Log Workout'}</Text>
           <Text style={styles.subtitle}>
             {isEditing ? 'Update the details below.' : 'Fill in today’s session.'}
@@ -134,6 +140,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
               value={form.sets}
               onChangeText={(v) => update('sets', v)}
               keyboardType="number-pad"
+              inputAccessoryViewID={KEYBOARD_DONE_BAR_ID}
               containerStyle={styles.thirdField}
             />
             <TextField
@@ -142,6 +149,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
               value={form.reps}
               onChangeText={(v) => update('reps', v)}
               keyboardType="number-pad"
+              inputAccessoryViewID={KEYBOARD_DONE_BAR_ID}
               containerStyle={styles.thirdField}
             />
             <TextField
@@ -150,12 +158,19 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
               value={form.weight}
               onChangeText={(v) => update('weight', v)}
               keyboardType="decimal-pad"
+              inputAccessoryViewID={KEYBOARD_DONE_BAR_ID}
               containerStyle={styles.thirdField}
             />
           </View>
 
           <Text style={styles.label}>Date</Text>
-          <Pressable style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+          <Pressable
+            style={styles.dateButton}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowDatePicker(true);
+            }}
+          >
             <Text style={styles.dateButtonText}>{form.date.toDateString()}</Text>
           </Pressable>
           {showDatePicker ? (
@@ -191,6 +206,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
           />
         </ScrollView>
       </KeyboardAvoidingView>
+      <KeyboardDoneBar />
     </ScreenContainer>
   );
 }
