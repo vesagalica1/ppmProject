@@ -5,6 +5,7 @@ import AddEditWorkoutScreen from '../screens/AddEditWorkoutScreen';
 import DayWorkoutsScreen from '../screens/DayWorkoutsScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import WeightTrackerScreen from '../screens/WeightTrackerScreen';
 import WorkoutDetailScreen from '../screens/WorkoutDetailScreen';
 import { colors } from '../theme/colors';
 
@@ -37,6 +38,11 @@ function HomeStackNavigator() {
         name="AddEditWorkout"
         component={AddEditWorkoutScreen}
         options={{ title: 'Edit Workout' }}
+      />
+      <HomeStack.Screen
+        name="WeightTracker"
+        component={WeightTrackerScreen}
+        options={{ title: 'Weight' }}
       />
     </HomeStack.Navigator>
   );

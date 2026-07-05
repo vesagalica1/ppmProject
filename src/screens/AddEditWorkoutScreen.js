@@ -16,6 +16,7 @@ import TextField from '../components/TextField';
 import { useAuth } from '../context/AuthContext';
 import { addWorkout, updateWorkout } from '../services/workouts';
 import { colors, radius, spacing, typography } from '../theme/colors';
+import { parseDecimal } from '../utils/number';
 
 const emptyForm = {
   exerciseName: '',
@@ -65,7 +66,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
     if (!form.exerciseName.trim()) return 'Please enter an exercise name.';
     if (!form.sets || Number.isNaN(Number(form.sets))) return 'Sets must be a number.';
     if (!form.reps || Number.isNaN(Number(form.reps))) return 'Reps must be a number.';
-    if (form.weight === '' || Number.isNaN(Number(form.weight))) return 'Weight must be a number.';
+    if (form.weight === '' || Number.isNaN(parseDecimal(form.weight))) return 'Weight must be a number.';
     return null;
   }
 
@@ -81,7 +82,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
       exerciseName: form.exerciseName.trim(),
       sets: Number(form.sets),
       reps: Number(form.reps),
-      weight: Number(form.weight),
+      weight: parseDecimal(form.weight),
       notes: form.notes.trim(),
       date: form.date,
     };

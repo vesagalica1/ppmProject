@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import DayGroupCard from '../components/DayGroupCard';
 import ScreenContainer from '../components/ScreenContainer';
+import WeightChart from '../components/WeightChart';
 import { useAuth } from '../context/AuthContext';
+import { subscribeToWeightEntries } from '../services/weightEntries';
 import { subscribeToWorkouts } from '../services/workouts';
 import { colors, radius, spacing, typography } from '../theme/colors';
 
@@ -24,6 +26,7 @@ export default function HomeScreen({ navigation }) {
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [weightEntries, setWeightEntries] = useState([]);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -41,8 +44,22 @@ export default function HomeScreen({ navigation }) {
     return unsubscribe;
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return undefined;
+    return subscribeToWeightEntries(user.uid, setWeightEntries, () => {});
+  }, [user]);
+
   const { weeklyCount, streak } = useMemo(() => computeStats(workouts), [workouts]);
   const dayGroups = useMemo(() => groupByDay(workouts), [workouts]);
+
+  const recentWeightEntries = useMemo(
+    () => weightEntries.slice(-14).map((e) => ({ weight: e.weight, date: toDate(e.date) })),
+    [weightEntries]
+  );
+  const latestWeight = weightEntries[weightEntries.length - 1];
+  const previousWeight = weightEntries[weightEntries.length - 2];
+  const weightDelta =
+    latestWeight && previousWeight ? latestWeight.weight - previousWeight.weight : null;
 
   return (
     <ScreenContainer>
@@ -63,6 +80,30 @@ export default function HomeScreen({ navigation }) {
         data={dayGroups}
         keyExtractor={(item) => item.dateKey}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View>
+            <Pressable
+              style={({ pressed }) => [styles.weightSection, pressed && styles.pressed]}
+              onPress={() => navigation.navigate('WeightTracker')}
+            >
+              <View style={styles.weightHeaderRow}>
+                <Text style={styles.sectionTitle}>Weight</Text>
+                <Text style={styles.weightValue}>
+                  {latestWeight ? `${latestWeight.weight} kg` : 'Log now →'}
+                </Text>
+              </View>
+              <WeightChart entries={recentWeightEntries} height={80} />
+              {weightDelta != null ? (
+                <Text style={styles.weightDelta}>
+                  {weightDelta > 0 ? '+' : ''}
+                  {weightDelta.toFixed(1)} kg since last entry
+                </Text>
+              ) : null}
+            </Pressable>
+
+            {dayGroups.length > 0 ? <Text style={styles.sectionTitle}>Recent Workouts</Text> : null}
+          </View>
+        }
         renderItem={({ item }) => (
           <DayGroupCard
             group={item}
@@ -181,6 +222,36 @@ const styles = StyleSheet.create({
   listContent: {
     padding: spacing.lg,
     paddingBottom: spacing.xl * 2,
+  },
+  weightSection: {
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  weightHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  weightValue: {
+    ...typography.h3,
+    color: colors.accent,
+  },
+  weightDelta: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
   emptyState: {
     alignItems: 'center',
