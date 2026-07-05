@@ -42,13 +42,30 @@ export default function WeightTrackerScreen() {
 
   const sortedDescending = useMemo(() => [...entries].reverse(), [entries]);
 
-  async function handleSave() {
+  function handleSave() {
     const value = parseDecimal(weight);
     if (!weight || Number.isNaN(value) || value <= 0) {
       Alert.alert('Check your input', 'Weight must be a positive number.');
       return;
     }
 
+    const existing = entries.find((e) => toDate(e.date).toDateString() === date.toDateString());
+    if (existing) {
+      Alert.alert(
+        'Replace existing entry?',
+        `You already logged ${existing.weight} kg for ${date.toDateString()}. Replace it with ${value} kg?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Replace', style: 'destructive', onPress: () => saveWeight(value) },
+        ]
+      );
+      return;
+    }
+
+    saveWeight(value);
+  }
+
+  async function saveWeight(value) {
     setSaving(true);
     try {
       await logWeightEntry(user.uid, { weight: value, date });
