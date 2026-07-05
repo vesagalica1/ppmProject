@@ -1,16 +1,8 @@
-// Replace these placeholder values with the config object from your own
-// Firebase project: Firebase Console -> Project settings -> General ->
-// "Your apps" -> Web app -> SDK setup and configuration -> Config.
-//
-// Also remember to enable, in the Firebase Console:
-//   Authentication -> Sign-in method -> Email/Password
-//   Firestore Database -> Create database (start in production mode,
-//   then paste the security rules from README.md)
 export const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-  messagingSenderId: 'YOUR_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  apiKey: 'AIzaSyCrsDRKibl_gZwALQah_3qDAYIP_GZF_Bs',
+  authDomain: 'gymlogproject.firebaseapp.com',
+  projectId: 'gymlogproject',
+  storageBucket: 'gymlogproject.firebasestorage.app',
+  messagingSenderId: '49268151493',
+  appId: '1:49268151493:web:80f7ae44dca0c844b8ccac',
 };
