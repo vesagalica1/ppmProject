@@ -6,9 +6,18 @@ Authentication and Firestore, plus local notification reminders.
 ## Features
 
 - **Auth** — Email/password sign up & log in (Firebase Authentication)
-- **Home** — list of logged workouts with a weekly count and day streak
-- **Add Workout** — log exercise, sets, reps, weight, date, and notes
+- **Home** — workouts grouped by day (one card per day: exercise count, total
+  sets, exercise names), weekly count, day streak, and a Weight section
+  showing the recent trend as a mini chart
+- **Day view** — tap a day on Home to see every exercise logged that day, with
+  a "+" to log another exercise straight to that date (date pre-filled and
+  locked)
+- **Add/Edit Workout** — log exercise, sets, reps, weight, date, and notes
 - **Workout Detail** — view, edit, or delete a logged workout
+- **Weight Tracker** — log daily body weight (one entry per calendar day —
+  re-logging a day updates it), see a line chart of the trend, latest value
+  and change since last entry, edit an entry via the pencil icon, or
+  swipe-left to delete
 - **Profile** — account info, daily workout reminder notification, sign out
 - **CRUD** — full create/read/update/delete against Firestore
 - **Device feature** — local notifications (`expo-notifications`) for a daily
@@ -16,25 +25,32 @@ Authentication and Firestore, plus local notification reminders.
 
 ## Tech stack
 
-- React Native + Expo (SDK 57)
+- React Native + Expo (SDK 54)
 - React Navigation (bottom tabs + native stack)
 - Firebase JS SDK (Authentication + Firestore)
 - expo-notifications / expo-device
 - @react-native-community/datetimepicker
+- react-native-gesture-handler (swipe-to-delete)
+- Charts are a small dependency-free `View`-based line chart component (no
+  charting library added, to avoid extra native dependencies)
 
 ## Project structure
 
 ```
 App.js
 src/
-  components/     Reusable UI (buttons, text fields, cards)
+  components/     Reusable UI: buttons, text fields, cards, DayGroupCard,
+                  WeightChart (dependency-free line chart), KeyboardDoneBar
+                  (iOS "Done" bar for numeric keyboards)
   context/        AuthContext (Firebase auth state)
   navigation/      RootNavigator, AppNavigator (tabs + stacks)
-  screens/        AuthScreen, HomeScreen, AddEditWorkoutScreen,
-                  WorkoutDetailScreen, ProfileScreen
-  services/       firebase.js, workouts.js (CRUD), userProfile.js,
-                  notifications.js
+  screens/        AuthScreen, HomeScreen, DayWorkoutsScreen,
+                  AddEditWorkoutScreen, WorkoutDetailScreen,
+                  WeightTrackerScreen, ProfileScreen
+  services/       firebase.js, workouts.js (CRUD), weightEntries.js (CRUD),
+                  userProfile.js, notifications.js
   theme/          colors, spacing, typography
+  utils/          number.js (locale-safe decimal parsing, e.g. "64,2")
 ```
 
 ## 1. Set up a Firebase project
@@ -62,7 +78,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
-      match /workouts/{workoutId} {
+      match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
@@ -70,7 +86,10 @@ service cloud.firestore {
 }
 ```
 
-This keeps every user's data private to that user.
+This keeps every user's data private to that user. The wildcard match covers
+every subcollection under a user (`workouts`, `weightEntries`, and any future
+one) instead of listing each one individually — add a new subcollection later
+and it's covered automatically.
 
 ### Data model
 
@@ -82,15 +101,21 @@ users (collection)
         ├── reminderEnabled: boolean
         ├── reminderTime: "18:00"
         ├── reminderDays: ["Mon", "Wed", "Fri"]
-        └── workouts (subcollection)
-              └── {workoutId} (doc)
-                    ├── exerciseName: string
-                    ├── sets: number
-                    ├── reps: number
+        ├── workouts (subcollection)
+        │     └── {workoutId} (doc)
+        │           ├── exerciseName: string
+        │           ├── sets: number
+        │           ├── reps: number
+        │           ├── weight: number
+        │           ├── notes: string
+        │           ├── date: timestamp
+        │           └── createdAt: timestamp
+        └── weightEntries (subcollection)
+              └── {YYYY-MM-DD} (doc — one per calendar day, keyed by date
+                                 so re-logging a day updates it in place)
                     ├── weight: number
-                    ├── notes: string
                     ├── date: timestamp
-                    └── createdAt: timestamp
+                    └── updatedAt: timestamp
 ```
 
 ## 2. Install dependencies
@@ -130,7 +155,10 @@ needed:
 
 | Operation | Where |
 |---|---|
-| Create | Add tab → `addWorkout()` → `addDoc` on `users/{uid}/workouts` |
-| Read | Home tab → `subscribeToWorkouts()` → `onSnapshot` query ordered by date |
+| Create | Add tab (or "+" on a Day view) → `addWorkout()` → `addDoc` on `users/{uid}/workouts` |
+| Read | Home tab → `subscribeToWorkouts()` → `onSnapshot` query ordered by date, grouped by day client-side |
 | Update | Workout Detail → Edit → `updateWorkout()` → `updateDoc` |
 | Delete | Workout Detail → Delete → `deleteWorkout()` → `deleteDoc` |
+| Create/Update | Weight Tracker → `logWeightEntry()` → `setDoc` (merge) on `users/{uid}/weightEntries/{YYYY-MM-DD}` — upsert by day |
+| Read | Weight Tracker / Home widget → `subscribeToWeightEntries()` → `onSnapshot` query ordered by date |
+| Delete | Weight Tracker → swipe left → `deleteWeightEntry()` → `deleteDoc` |

@@ -2,6 +2,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,28 +11,34 @@ import {
   Text,
   View,
 } from 'react-native';
+import KeyboardDoneBar, { KEYBOARD_DONE_BAR_ID } from '../components/KeyboardDoneBar';
 import PrimaryButton from '../components/PrimaryButton';
 import ScreenContainer from '../components/ScreenContainer';
 import TextField from '../components/TextField';
 import { useAuth } from '../context/AuthContext';
 import { addWorkout, updateWorkout } from '../services/workouts';
 import { colors, radius, spacing, typography } from '../theme/colors';
+import { parseDecimal } from '../utils/number';
 
-const emptyForm = {
-  exerciseName: '',
-  sets: '',
-  reps: '',
-  weight: '',
-  notes: '',
-  date: new Date(),
-};
+function createEmptyForm(presetDate) {
+  return {
+    exerciseName: '',
+    sets: '',
+    reps: '',
+    weight: '',
+    notes: '',
+    date: presetDate ? new Date(presetDate) : new Date(),
+  };
+}
 
 export default function AddEditWorkoutScreen({ navigation, route }) {
   const { user } = useAuth();
   const editingWorkout = route.params?.workout;
+  const presetDate = route.params?.presetDate;
   const isEditing = Boolean(editingWorkout);
+  const isDateLocked = !isEditing && Boolean(presetDate);
 
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => createEmptyForm(presetDate));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -46,16 +53,16 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
         date: editingWorkout.date?.toDate ? editingWorkout.date.toDate() : new Date(editingWorkout.date),
       });
     } else {
-      setForm(emptyForm);
+      setForm(createEmptyForm(presetDate));
     }
-  }, [editingWorkout?.id]);
+  }, [editingWorkout?.id, presetDate]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
-      if (!isEditing) setForm(emptyForm);
+      if (!isEditing) setForm(createEmptyForm(presetDate));
     });
     return unsubscribe;
-  }, [navigation, isEditing]);
+  }, [navigation, isEditing, presetDate]);
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -65,7 +72,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
     if (!form.exerciseName.trim()) return 'Please enter an exercise name.';
     if (!form.sets || Number.isNaN(Number(form.sets))) return 'Sets must be a number.';
     if (!form.reps || Number.isNaN(Number(form.reps))) return 'Reps must be a number.';
-    if (form.weight === '' || Number.isNaN(Number(form.weight))) return 'Weight must be a number.';
+    if (form.weight === '' || Number.isNaN(parseDecimal(form.weight))) return 'Weight must be a number.';
     return null;
   }
 
@@ -81,7 +88,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
       exerciseName: form.exerciseName.trim(),
       sets: Number(form.sets),
       reps: Number(form.reps),
-      weight: Number(form.weight),
+      weight: parseDecimal(form.weight),
       notes: form.notes.trim(),
       date: form.date,
     };
@@ -92,11 +99,14 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
       } else {
         await addWorkout(user.uid, payload);
       }
-      setForm(emptyForm);
+      setForm(createEmptyForm(presetDate));
       if (isEditing) {
         // Pop back to the Home list (instead of the now-stale detail screen)
         // so the edited values are shown fresh from the live Firestore query.
         navigation.navigate('Home');
+      } else if (presetDate) {
+        // Return to the Day view we came from; it's live-subscribed so the new entry shows up right away.
+        navigation.goBack();
       } else {
         navigation.navigate('HomeTab', { screen: 'Home' });
       }
@@ -113,7 +123,11 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
+        >
           <Text style={styles.title}>{isEditing ? 'Edit Workout' : 'Log Workout'}</Text>
           <Text style={styles.subtitle}>
             {isEditing ? 'Update the details below.' : 'Fill in today’s session.'}
@@ -133,6 +147,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
               value={form.sets}
               onChangeText={(v) => update('sets', v)}
               keyboardType="number-pad"
+              inputAccessoryViewID={KEYBOARD_DONE_BAR_ID}
               containerStyle={styles.thirdField}
             />
             <TextField
@@ -141,6 +156,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
               value={form.reps}
               onChangeText={(v) => update('reps', v)}
               keyboardType="number-pad"
+              inputAccessoryViewID={KEYBOARD_DONE_BAR_ID}
               containerStyle={styles.thirdField}
             />
             <TextField
@@ -149,19 +165,29 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
               value={form.weight}
               onChangeText={(v) => update('weight', v)}
               keyboardType="decimal-pad"
+              inputAccessoryViewID={KEYBOARD_DONE_BAR_ID}
               containerStyle={styles.thirdField}
             />
           </View>
 
           <Text style={styles.label}>Date</Text>
-          <Pressable style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+          <Pressable
+            style={[styles.dateButton, isDateLocked && styles.dateButtonDisabled]}
+            disabled={isDateLocked}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowDatePicker(true);
+            }}
+          >
             <Text style={styles.dateButtonText}>{form.date.toDateString()}</Text>
           </Pressable>
-          {showDatePicker ? (
+          {showDatePicker && !isDateLocked ? (
             <DateTimePicker
               value={form.date}
               mode="date"
               display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              themeVariant="dark"
+              accentColor={colors.accent}
               onChange={(event, selectedDate) => {
                 setShowDatePicker(Platform.OS === 'ios');
                 if (selectedDate) update('date', selectedDate);
@@ -188,6 +214,7 @@ export default function AddEditWorkoutScreen({ navigation, route }) {
           />
         </ScrollView>
       </KeyboardAvoidingView>
+      <KeyboardDoneBar />
     </ScreenContainer>
   );
 }
@@ -229,6 +256,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: spacing.md,
+  },
+  dateButtonDisabled: {
+    opacity: 0.6,
   },
   dateButtonText: {
     ...typography.body,
